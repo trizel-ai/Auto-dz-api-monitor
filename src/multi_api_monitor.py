@@ -1,51 +1,49 @@
-# multi_api_monitor.py — Unified Monitoring for NASA, CERN, and Planck
+# multi_api_monitor.py — Unified Scientific Monitor
+
 from nasa_api_monitor import fetch_nasa_data
 from cern_api_monitor import fetch_cern_data
 from planck_api_monitor import fetch_planck_data
 
+from decision_logic import analyze_vs_series
+from email_alert import send_email_alert
+
+
 def run_unified_monitor():
-    print("🔁 Unified Scientific Monitor via AUTO DZ ACT\n")
+    print("🧠 Unified Scientific Monitor: START\n")
 
-    nasa = fetch_nasa_data()
-    cern = fetch_cern_data()
-    planck = fetch_planck_data()
+    nasa_data = fetch_nasa_data()
+    cern_data = fetch_cern_data()
+    planck_data = fetch_planck_data()
 
-    print("📡 NASA:", nasa)
-    print("🔬 CERN:", cern)
-    print("🌌 Planck:", planck)
+    results = {
+        "NASA": analyze_vs_series(nasa_data),
+        "CERN": analyze_vs_series(cern_data),
+        "PLANCK": analyze_vs_series(planck_data)
+    }
+
+    for source, result in results.items():
+        status = result.get("status")
+        vs_value = result["details"].get("vs_mean", 0)
+        reason = result["details"].get("reason", "No reason provided")
+
+        print(f"🔍 {source} → ∇S = {vs_value:.2f} | Status: {status}")
+
+        if status == "ALERT":
+            subject = f"🚨 STOE Alert from {source}: ∇S Threshold Breach"
+            body = f"""
+AUTO DZ ACT has detected a critical phase change in ∇S signal.
+
+📡 Source: {source}
+📈 ∇S Value: {vs_value:.2f}
+📊 Status: {status}
+
+Reason:
+{reason}
+
+🧠 STOE framework recommends initiating a follow-up investigation.
+"""
+            send_email_alert(subject, body)
+
 
 if __name__ == "__main__":
     run_unified_monitor()
-from email_alert import send_email_alert
-
-# Simulated results from different sources
-results = {
-    "NASA": {"∇S": 6.52},
-    "CERN": {"∇S": 5.95},
-    "PLANCK": {"∇S": 6.48}
-}
-
-# Alert threshold parameters
-threshold = 6.4
-alert_duration_days = 90  # Simulated duration over threshold
-
-# Check and trigger alert
-for source, data in results.items():
-    s_value = data.get("∇S", 0)
-
-    if s_value > threshold:
-        subject = f"🚨 STOE Alert: ∇S exceeded {threshold} at {source}"
-        body = f"""
-AUTO DZ ACT has detected a persistent increase in ∇S value at {source}.
-
-Details:
-🔬 Source: {source}
-📈 ∇S value: {s_value}
-📅 Duration over threshold: {alert_duration_days} days
-
-This exceeds the critical STOE spectral threshold (6.4) sustained over 90 days,
-indicating a potential phase transition (Sp-field disruption) according to STOE 2025.
-
-Anomaly confirmed. Please initiate validation or publication process.
-"""
-        send_email_alert(subject, body)
