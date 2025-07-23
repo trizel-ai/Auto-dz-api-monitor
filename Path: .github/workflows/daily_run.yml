@@ -1,0 +1,25 @@
+name: 🔁 Daily AUTO DZ ACT Monitor
+
+on:
+  schedule:
+    - cron: '0 7 * * *'  # كل يوم الساعة 07:00 UTC
+  workflow_dispatch:     # تشغيل يدوي من واجهة GitHub
+
+jobs:
+  run-monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 🔽 Checkout repo
+      uses: actions/checkout@v3
+
+    - name: 🐍 Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 📦 Install dependencies
+      run: pip install requests
+
+    - name: 🚀 Run Multi API Monitor
+      run: python src/multi_api_monitor.py
