@@ -1,0 +1,28 @@
+name: STOE Daily Monitor – AUTO DZ ACT
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # تشغيل يومي في منتصف الليل UTC
+  workflow_dispatch:       # تشغيل يدوي عند الطلب
+
+jobs:
+  monitor:
+    name: Daily API Monitoring
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🔽 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: 🚀 Run multi_api_monitor.py
+        run: |
+          PYTHONPATH=src python src/multi_api_monitor.py
