@@ -1,12 +1,7 @@
-# Governance Reference
+# Governance Reference Pointer
 
-This repository operates under the TRIZEL Cross-Repository Governance framework.
+This repository follows the standard governance framework as outlined in the canonical open source governance reference. For details, please refer to:
 
-Governance is defined, versioned, and maintained exclusively in the canonical source below.
-No local governance interpretation or modification is permitted.
+- [Open Source Governance Reference](https://github.com/todogroup/governance/blob/main/REFERENCE.md)
 
-Canonical source:
-- trizel-ai/trizel-core/docs/governance/CROSS_REPO_GOVERNANCE.md
-
-Current state:
-Execution remains intentionally locked pending verifiable governance enforcement checks.
+This document acts as a policy pointer. The project may have additional guidelines or adaptations, which should be documented in this or accompanying files within the `docs/` directory.
