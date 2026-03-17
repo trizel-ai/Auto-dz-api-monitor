@@ -1,0 +1,104 @@
+name: 3I-ATLAS Monitoring Ingestion
+
+on:
+  schedule:
+    # Run daily at 06:00 UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ingest:
+    name: Fetch & Package 3I-ATLAS Observations
+    runs-on: ubuntu-latest
+
+    steps:
+      # ------------------------------------------------------------------ #
+      # 1. Check out the monitoring repository                               #
+      # ------------------------------------------------------------------ #
+      - name: Checkout monitoring repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------ #
+      # 2. Set up Python                                                     #
+      # ------------------------------------------------------------------ #
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ------------------------------------------------------------------ #
+      # 3. Install dependencies                                              #
+      # ------------------------------------------------------------------ #
+      - name: Install dependencies
+        run: pip install -r requirements-ingest.txt
+
+      # ------------------------------------------------------------------ #
+      # 4. Run the ingestion pipeline                                        #
+      # ------------------------------------------------------------------ #
+      - name: Run 3I-ATLAS ingestion pipeline
+        env:
+          INGEST_OUTPUT_DIR: ${{ github.workspace }}/ingest_output
+        run: python src/ingest_3i_atlas.py
+
+      # ------------------------------------------------------------------ #
+      # 5. Determine today's date for the archive path                       #
+      # ------------------------------------------------------------------ #
+      - name: Set date variable
+        id: date
+        run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------ #
+      # 6. Checkout the Layer-1 archive repository                           #
+      #    (uses a PAT with repo-scope stored as a secret)                   #
+      # ------------------------------------------------------------------ #
+      - name: Checkout Layer-1 archive repository
+        uses: actions/checkout@v4
+        with:
+          repository: abdelkader-omran/AUTO-DZ-ACT-3I-ATLAS-DAILY
+          token: ${{ secrets.ARCHIVE_PAT }}
+          path: archive_repo
+
+      # ------------------------------------------------------------------ #
+      # 7. Copy the ingestion output into the archive workspace              #
+      # ------------------------------------------------------------------ #
+      - name: Copy observation package into archive workspace
+        run: |
+          DATE="${{ steps.date.outputs.today }}"
+          SRC="${{ github.workspace }}/ingest_output/observations/${DATE}"
+          DST="archive_repo/observations/${DATE}"
+          mkdir -p "${DST}"
+          cp -r "${SRC}/." "${DST}/"
+
+      # ------------------------------------------------------------------ #
+      # 8. Create a Pull Request against the Layer-1 archive                 #
+      # ------------------------------------------------------------------ #
+      - name: Create Pull Request to Layer-1 archive
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.ARCHIVE_PAT }}
+          path: archive_repo
+          branch: "ingest/3i-atlas-${{ steps.date.outputs.today }}"
+          base: main
+          title: "obs(3I-ATLAS): daily ingestion ${{ steps.date.outputs.today }}"
+          body: |
+            ## Automated ingestion — 3I-ATLAS
+
+            | Field | Value |
+            |-------|-------|
+            | **Object** | 3I-ATLAS |
+            | **Observation date** | ${{ steps.date.outputs.today }} |
+            | **Triggered by** | `${{ github.repository }}` @ `${{ github.sha }}` |
+
+            ### Contents
+            - `observations/${{ steps.date.outputs.today }}/observation.json` — archival summary
+            - `observations/${{ steps.date.outputs.today }}/raw_sources.json` — source manifest with SHA-256 checksums
+            - `observations/${{ steps.date.outputs.today }}/raw/` — unmodified raw data files
+
+            This PR was created automatically by the monitoring ingestion pipeline.
+            Please review before merging to preserve the append-only archive invariant.
+          commit-message: "obs(3I-ATLAS): add daily ingestion package ${{ steps.date.outputs.today }}"
+          labels: automated-ingestion
+          delete-branch: false
